@@ -9,7 +9,7 @@
     currentId: null,
     draft: null,
     slugManual: false,
-    snapshot: null // last clean article copy for discard
+    snapshot: null
   };
 
   function statusLabel(store) {
@@ -66,17 +66,7 @@
     const cat = KB.ui.tree.getSelected();
     articles = KB.categories.filterByCategory(articles, cat);
     const q = ($("search-input") && $("search-input").value) || "";
-    if (KB.search && typeof KB.search.filter === "function") {
-      articles = KB.search.filter(articles, q);
-    } else if (String(q).trim()) {
-      const needle = String(q).trim().toLowerCase();
-      articles = articles.filter(function (a) {
-        const hay = [a.title, a.body, a.slug, a.category, (a.tags || []).join(" ")]
-          .join("\n")
-          .toLowerCase();
-        return hay.indexOf(needle) !== -1;
-      });
-    }
+    articles = KB.search.filter(articles, q);
     return articles;
   }
 
@@ -126,7 +116,7 @@
     state.currentId = article.id;
     state.draft = Object.assign({}, article);
     state.snapshot = JSON.parse(JSON.stringify(article));
-    state.slugManual = true;
+    state.slugManual = !!article.slug;
     showEditor(true);
     $("field-title").value = article.title || "";
     $("field-slug").value = article.slug || "";
@@ -167,7 +157,19 @@
   }
 
   function discardCurrentEdits() {
-    if (!state.currentId || !state.snapshot) return;
+    if (!state.currentId || !state.snapshot) {
+      // New unsaved article with no snapshot base — remove it
+      if (state.currentId) {
+        KB.store.data.articles = KB.store.getArticles().filter(function (a) {
+          return a.id !== state.currentId;
+        });
+      }
+      KB.store.dirty = false;
+      KB.store.status = "saved";
+      KB.store._emit();
+      fillEditor(null);
+      return;
+    }
     const articles = KB.store.getArticles();
     const idx = articles.findIndex(function (a) {
       return a.id === state.currentId;
@@ -176,19 +178,12 @@
       articles[idx] = JSON.parse(JSON.stringify(state.snapshot));
       KB.store.data.articles = articles;
     }
-    // If the only dirty was this article and store was dirty solely from it,
-    // we re-check: compare whole doc is hard; mark clean only if user saved before.
-    // Safer: leave dirty flag if other changes exist — for single-editor UX, clear dirty.
     KB.store.dirty = false;
     KB.store.status = "saved";
     KB.store._emit();
     fillEditor(state.snapshot);
   }
 
-  /**
-   * Run before navigating away from current article when dirty.
-   * @returns {Promise<boolean>} true if allowed to continue
-   */
   async function guardDirty() {
     applyDraftToStore();
     if (!KB.store.dirty) return true;
@@ -215,7 +210,12 @@
   function onFieldInput(e) {
     if (!state.currentId) return;
     if (e && e.target && e.target.id === "field-title" && !state.slugManual) {
-      $("field-slug").value = KB.slug.slugify($("field-title").value);
+      const base = KB.slug.slugify($("field-title").value);
+      $("field-slug").value = KB.slug.uniqueSlug(
+        KB.store.getArticles(),
+        base,
+        state.currentId
+      );
     }
     if (e && e.target && e.target.id === "field-slug") {
       state.slugManual = true;
@@ -243,9 +243,7 @@
         const a = KB.store.getArticles().find(function (x) {
           return x.id === state.currentId;
         });
-        if (a) {
-          fillEditor(a);
-        }
+        if (a) fillEditor(a);
       }
       if (!silent) toast("已儲存", "ok");
     } catch (err) {
@@ -278,16 +276,15 @@
     const title = (a && a.title) || "呢篇";
     const ok = await KB.dialogs.confirm({
       title: "刪除文章",
-      message: "確定刪除「" + title + "」？此操作會標為未儲存，儲存後先至寫入伺服器。",
+      message: "確定刪除「" + title + "」？刪除後記得按儲存先至寫入伺服器。",
       okLabel: "刪除",
       cancelLabel: "取消",
       danger: true
     });
     if (!ok) return;
-    const articles = KB.store.getArticles().filter(function (x) {
+    KB.store.data.articles = KB.store.getArticles().filter(function (x) {
       return x.id !== state.currentId;
     });
-    KB.store.data.articles = articles;
     KB.store.markDirty();
     state.currentId = null;
     state.draft = null;
@@ -297,18 +294,52 @@
     toast("已刪除（尚未儲存到伺服器）");
   }
 
+  async function onNew() {
+    const ok = await guardDirty();
+    if (!ok) return;
+
+    let category = "";
+    const sel = KB.ui.tree.getSelected();
+    if (sel && sel !== "__all__" && sel !== "__none__") category = sel;
+
+    const article = KB.schema.createArticle({
+      title: "未命名文章",
+      category: category,
+      body: "",
+      tags: []
+    });
+    article.slug = KB.slug.uniqueSlug(KB.store.getArticles(), article.slug || article.title, article.id);
+
+    KB.store.data.articles = KB.store.getArticles().concat([article]);
+    KB.store.markDirty();
+    // snapshot = null means discard removes the new article
+    state.currentId = article.id;
+    state.draft = Object.assign({}, article);
+    state.snapshot = null;
+    state.slugManual = false;
+    showEditor(true);
+    $("field-title").value = article.title;
+    $("field-slug").value = article.slug;
+    $("field-category").value = article.category || "";
+    $("field-tags").value = "";
+    $("field-body").value = "";
+    renderPreview();
+    refreshTreeAndList();
+    if (KB.ui.editor) KB.ui.editor.focus();
+    else $("field-title").focus();
+    $("field-title").select();
+  }
+
   async function boot() {
     KB.ui.layout.init();
-    if (KB.ui.editor) {
-      KB.ui.editor.bind({});
-    }
+    if (KB.ui.editor) KB.ui.editor.bind({});
+
     KB.store.onChange(function () {
       updateSaveUI();
-      refreshTreeAndList();
     });
     updateSaveUI();
 
-    KB.ui.tree.onSelect = async function () {
+    KB.ui.tree.onSelect = function () {
       refreshTreeAndList();
     };
     KB.ui.list.onSelect = function (id) {
@@ -316,10 +347,20 @@
     };
 
     $("btn-save").addEventListener("click", function () {
-      onSave(false);
+      onSave(false).catch(function () {});
+    });
+    $("btn-new").addEventListener("click", function () {
+      onNew().catch(function () {});
     });
     const del = $("btn-delete");
     if (del) del.addEventListener("click", onDelete);
+
+    const search = $("search-input");
+    if (search) {
+      search.addEventListener("input", function () {
+        refreshTreeAndList();
+      });
+    }
 
     ["field-title", "field-slug", "field-category", "field-tags", "field-body"].forEach(function (id) {
       const el = $(id);
@@ -354,6 +395,7 @@
     showEditor: showEditor,
     guardDirty: guardDirty,
     onDelete: onDelete,
+    onNew: onNew,
     discardCurrentEdits: discardCurrentEdits
   };
 
