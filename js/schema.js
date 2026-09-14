@@ -33,12 +33,15 @@
     const title = asString(src.title, "");
     const body = asString(src.body, "");
     const category = asString(src.category, "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+    const author = asString(src.author, "").trim();
+    const editedBy = asString(src.editedBy, "").trim();
     const createdAt = asString(src.createdAt, nowIso());
     const updatedAt = asString(src.updatedAt, createdAt);
     let slug = asString(src.slug, "").trim();
     if (!slug && KB.slug && typeof KB.slug.slugify === "function") {
       slug = KB.slug.slugify(title || id);
     }
+    // Preserve unknown fields; first-class author / editedBy default to ""
     const article = Object.assign({}, src, {
       id: id,
       slug: slug,
@@ -46,6 +49,8 @@
       body: body,
       category: category,
       tags: asTags(src.tags),
+      author: author,
+      editedBy: editedBy,
       createdAt: createdAt,
       updatedAt: updatedAt,
       extra: isPlainObject(src.extra) ? src.extra : {}
@@ -56,9 +61,10 @@
   function normalizeDoc(raw) {
     const src = isPlainObject(raw) ? raw : {};
     const articles = Array.isArray(src.articles) ? src.articles.map(normalizeArticle) : [];
-    // Preserve unknown top-level fields
+    // Preserve unknown top-level fields; bump version lightly for new first-class fields
+    const ver = src.version != null ? Number(src.version) || 1 : 1;
     return Object.assign({}, src, {
-      version: src.version != null ? Number(src.version) || 1 : 1,
+      version: ver < 2 ? 2 : ver,
       app: asString(src.app, "kb") || "kb",
       updatedAt: asString(src.updatedAt, nowIso()),
       meta: isPlainObject(src.meta) ? src.meta : {},
@@ -101,6 +107,8 @@
         body: asString(p.body, ""),
         category: asString(p.category, ""),
         tags: asTags(p.tags),
+        author: asString(p.author, "").trim(),
+        editedBy: asString(p.editedBy, "").trim(),
         createdAt: asString(p.createdAt, ts),
         updatedAt: asString(p.updatedAt, ts),
         extra: isPlainObject(p.extra) ? p.extra : {}
@@ -115,7 +123,7 @@
     validateBeforeSave: validateBeforeSave,
     createArticle: createArticle,
     emptyDoc: function () {
-      return normalizeDoc({ version: 1, app: "kb", meta: {}, articles: [] });
+      return normalizeDoc({ version: 2, app: "kb", meta: {}, articles: [] });
     }
   };
 })(window);

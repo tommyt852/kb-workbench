@@ -40,15 +40,38 @@
       <section class="pane editor-wrap" id="pane-editor">
         <div id="editor-empty" class="editor-empty">選擇或新建一篇文章</div>
         <div id="editor-panel" class="hidden" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-          <div class="meta-bar">
-            <label>標題 <input id="field-title" type="text" /></label>
-            <label>Slug <input id="field-slug" type="text" /></label>
-            <label>分類 <input id="field-category" type="text" placeholder="例如 工程/API/Auth" /></label>
-            <label>Tags <input id="field-tags" type="text" placeholder="逗號分隔" /></label>
-            <div class="meta-actions">
-              <button type="button" class="btn" id="btn-edit">編輯</button>
-              <button type="button" class="btn ghost hidden" id="btn-done">完成</button>
-              <button type="button" class="btn ghost danger" id="btn-delete">刪除</button>
+          <div id="meta-panel" class="meta-panel">
+            <div class="meta-toolbar">
+              <div class="meta-panel-title">元資料</div>
+              <div class="meta-actions">
+                <button type="button" class="btn" id="btn-edit">編輯</button>
+                <button type="button" class="btn ghost hidden" id="btn-done">完成</button>
+                <button type="button" class="btn ghost danger" id="btn-delete">刪除</button>
+              </div>
+              <button type="button" class="btn icon ghost" id="btn-toggle-meta" title="摺疊元資料">⌃</button>
+            </div>
+            <div class="meta-bar" id="meta-bar">
+              <label>標題 <input id="field-title" type="text" /></label>
+              <label>Slug <input id="field-slug" type="text" /></label>
+              <label>分類
+                <input id="field-category" type="text" list="category-datalist" placeholder="例如 工程/API/Auth" autocomplete="off" />
+              </label>
+              <datalist id="category-datalist"></datalist>
+              <label id="author-field-wrap" class="author-field">Author
+                <input id="field-author" type="text" list="author-datalist" placeholder="作者" autocomplete="off" />
+              </label>
+              <datalist id="author-datalist"></datalist>
+              <label>Edited by
+                <input id="field-editedBy" type="text" list="editedby-datalist" placeholder="最後編輯者" autocomplete="off" />
+              </label>
+              <datalist id="editedby-datalist"></datalist>
+              <label class="tags-field">Tags
+                <div id="tags-widget" class="tags-widget">
+                  <div id="tag-chips" class="tag-chips"></div>
+                  <input id="field-tag-input" type="text" placeholder="輸入 tag，Enter 新增" autocomplete="off" />
+                  <div id="tag-suggest" class="tag-suggest hidden"></div>
+                </div>
+              </label>
             </div>
           </div>
           <div id="article-view" class="article-view mode-preview">
@@ -81,6 +104,7 @@
   <script src="js/ui/tree.js"></script>
   <script src="js/ui/list.js"></script>
   <script src="js/ui/editor.js"></script>
+  <script src="js/ui/meta.js"></script>
   <script src="js/dialogs.js"></script>
   <script src="app.js"></script>
 </body>

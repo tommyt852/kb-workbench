@@ -50,7 +50,7 @@
       const btnEdit = document.getElementById("btn-edit");
       const btnDone = document.getElementById("btn-done");
       const heading = document.getElementById("preview-heading");
-      const metaInputs = ["field-title", "field-slug", "field-category", "field-tags"];
+      const metaInputs = ["field-title", "field-slug"];
 
       if (view) {
         view.classList.toggle("mode-preview", this._mode === "preview");
@@ -67,6 +67,9 @@
         const el = document.getElementById(id);
         if (el) el.readOnly = !editable;
       });
+      if (KB.ui.meta && typeof KB.ui.meta.setEditable === "function") {
+        KB.ui.meta.setEditable(editable);
+      }
 
       this.updatePreview();
       if (this._mode === "edit") {
