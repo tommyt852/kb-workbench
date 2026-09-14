@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KB Workbench</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="logo">KB <span>Workbench</span></div>
+      <input id="search-input" class="search" type="search" placeholder="搜尋 title / body / tags…" autocomplete="off" />
+      <span id="save-status" class="badge" data-status="idle">—</span>
+      <button type="button" class="btn" id="btn-save">儲存</button>
+      <button type="button" class="btn ghost" id="btn-import">匯入 JSON</button>
+      <button type="button" class="btn ghost" id="btn-export">匯出</button>
+      <button type="button" class="btn" id="btn-new">＋ 新建</button>
+      <input type="file" id="import-file" accept="application/json,.json" class="hidden" />
+    </header>
+    <main class="workspace">
+      <aside class="pane" id="pane-tree">
+        <div class="pane-header">
+          <div class="pane-title">分類</div>
+          <button type="button" class="btn icon ghost" id="btn-toggle-tree" title="摺疊分類">‹</button>
+        </div>
+        <div class="pane-body">
+          <ul class="tree" id="category-tree"></ul>
+        </div>
+      </aside>
+      <section class="pane" id="pane-list">
+        <div class="pane-header">
+          <div class="pane-title" id="list-title">文章</div>
+          <button type="button" class="btn icon ghost" id="btn-toggle-list" title="摺疊列表">‹</button>
+        </div>
+        <div class="pane-body">
+          <ul class="articles" id="article-list"></ul>
+        </div>
+      </section>
+      <section class="pane editor-wrap" id="pane-editor">
+        <div id="editor-empty" class="editor-empty">選擇或新建一篇文章</div>
+        <div id="editor-panel" class="hidden" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+          <div class="meta-bar">
+            <label>標題 <input id="field-title" type="text" /></label>
+            <label>Slug <input id="field-slug" type="text" /></label>
+            <label>分類 <input id="field-category" type="text" placeholder="例如 工程/API/Auth" /></label>
+            <label>Tags <input id="field-tags" type="text" placeholder="逗號分隔" /></label>
+            <div class="meta-actions">
+              <button type="button" class="btn ghost danger" id="btn-delete">刪除</button>
+            </div>
+          </div>
+          <div class="split">
+            <div class="col">
+              <div class="col-h">Markdown</div>
+              <textarea id="field-body" spellcheck="false"></textarea>
+            </div>
+            <div class="col">
+              <div class="col-h">Preview</div>
+              <div class="preview" id="preview"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast-host"></div>
+  <div id="modal-host"></div>
+
+  <script src="config.js"></script>
+  <script src="vendor/marked/marked.min.js"></script>
+  <script src="vendor/dompurify/purify.min.js"></script>
+  <script src="js/slug.js"></script>
+  <script src="js/schema.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/categories.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/markdown.js"></script>
+  <script src="js/ui/layout.js"></script>
+  <script src="js/ui/tree.js"></script>
+  <script src="js/ui/list.js"></script>
+  <script src="js/ui/editor.js"></script>
+  <script src="js/dialogs.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

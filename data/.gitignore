@@ -1,0 +1,3 @@
+kb-*.json
+!.gitignore
+!kb.json
