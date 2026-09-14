@@ -171,8 +171,18 @@
     showEditor(true);
     $("field-title").value = article.title || "";
     $("field-slug").value = article.slug || "";
-    $("field-category").value = article.category || "";
-    $("field-tags").value = (article.tags || []).join(", ");
+    if (KB.ui.meta) {
+      KB.ui.meta.setCategory(article.category || "");
+      KB.ui.meta.setTags(article.tags || []);
+      KB.ui.meta.setAuthor(article.author || "");
+      KB.ui.meta.setEditedBy(article.editedBy || "");
+      KB.ui.meta.syncAuthorLockFromArticle(article);
+      KB.ui.meta.refreshFromArticles(KB.store.getArticles());
+    } else {
+      $("field-category").value = article.category || "";
+      if ($("field-author")) $("field-author").value = article.author || "";
+      if ($("field-editedBy")) $("field-editedBy").value = article.editedBy || "";
+    }
     setEditorMarkdown(article.body || "");
     setViewMode("preview");
   }
@@ -183,6 +193,8 @@
       String(a.slug || "") === String(b.slug || "") &&
       String(a.category || "") === String(b.category || "") &&
       String(a.body || "") === String(b.body || "") &&
+      String(a.author || "") === String(b.author || "") &&
+      String(a.editedBy || "") === String(b.editedBy || "") &&
       JSON.stringify(a.tags || []) === JSON.stringify(b.tags || [])
     );
   }
@@ -194,21 +206,38 @@
       return a.id === state.currentId;
     });
     if (idx < 0) return;
-    const tags = String($("field-tags").value || "")
-      .split(/[,，]/)
-      .map(function (t) {
-        return t.trim();
-      })
-      .filter(Boolean);
+    const tags = KB.ui.meta
+      ? KB.ui.meta.getTags()
+      : [];
+    let category = KB.ui.meta
+      ? KB.ui.meta.getCategory()
+      : String($("field-category").value || "")
+          .trim()
+          .replace(/\\/g, "/")
+          .replace(/^\/+|\/+$/g, "");
+    let author = KB.ui.meta
+      ? KB.ui.meta.getAuthor()
+      : String(($("field-author") && $("field-author").value) || "").trim();
+    let editedBy = KB.ui.meta
+      ? KB.ui.meta.getEditedBy()
+      : String(($("field-editedBy") && $("field-editedBy").value) || "").trim();
     const prev = articles[idx];
+    // Lock only from saved snapshot (or UI lock). Never lock from in-memory draft.
+    const baselineAuthor = state.snapshot
+      ? String(state.snapshot.author || "").trim()
+      : "";
+    const authorLocked =
+      (KB.ui.meta && KB.ui.meta.isAuthorLocked()) || baselineAuthor !== "";
+    if (authorLocked) {
+      author = baselineAuthor || String(prev.author || "").trim();
+    }
     const nextFields = {
       title: $("field-title").value,
       slug: $("field-slug").value.trim(),
-      category: String($("field-category").value || "")
-        .trim()
-        .replace(/\\/g, "/")
-        .replace(/^\/+|\/+$/g, ""),
+      category: category,
       tags: tags,
+      author: author,
+      editedBy: editedBy,
       body: getEditorMarkdown()
     };
     if (fieldsEqual(prev, nextFields)) {
@@ -294,10 +323,12 @@
       e.target &&
       (e.target.id === "field-category" ||
         e.target.id === "field-title" ||
-        e.target.id === "field-tags" ||
-        e.target.id === "field-slug")
+        e.target.id === "field-slug" ||
+        e.target.id === "field-author" ||
+        e.target.id === "field-editedBy")
     ) {
       refreshTreeAndList();
+      if (KB.ui.meta) KB.ui.meta.refreshFromArticles(KB.store.getArticles());
     }
   }
 
@@ -374,7 +405,9 @@
       title: "未命名文章",
       category: category,
       body: "",
-      tags: []
+      tags: [],
+      author: "",
+      editedBy: ""
     });
     article.slug = KB.slug.uniqueSlug(
       KB.store.getArticles(),
@@ -391,8 +424,18 @@
     showEditor(true);
     $("field-title").value = article.title;
     $("field-slug").value = article.slug;
-    $("field-category").value = article.category || "";
-    $("field-tags").value = "";
+    if (KB.ui.meta) {
+      KB.ui.meta.setCategory(article.category || "");
+      KB.ui.meta.setTags([]);
+      KB.ui.meta.setAuthor("");
+      KB.ui.meta.setEditedBy("");
+      KB.ui.meta.setAuthorLocked(false);
+      KB.ui.meta.refreshFromArticles(KB.store.getArticles());
+    } else {
+      $("field-category").value = article.category || "";
+      if ($("field-author")) $("field-author").value = "";
+      if ($("field-editedBy")) $("field-editedBy").value = "";
+    }
     setEditorMarkdown("");
     setViewMode("edit");
     refreshTreeAndList();
@@ -491,6 +534,16 @@
         }
       });
     }
+    if (KB.ui.meta) {
+      KB.ui.meta.bind({
+        onChange: function () {
+          if (!state.currentId) return;
+          applyDraftToStore();
+          refreshTreeAndList();
+          KB.ui.meta.refreshFromArticles(KB.store.getArticles());
+        }
+      });
+    }
 
     KB.store.onChange(function () {
       updateSaveUI();
@@ -545,7 +598,7 @@
       });
     }
 
-    ["field-title", "field-slug", "field-category", "field-tags", "field-body"].forEach(function (id) {
+    ["field-title", "field-slug", "field-category", "field-author", "field-editedBy", "field-body"].forEach(function (id) {
       const el = $(id);
       if (el) el.addEventListener("input", onFieldInput);
     });
@@ -569,6 +622,7 @@
 
     try {
       await KB.store.load();
+      if (KB.ui.meta) KB.ui.meta.refreshFromArticles(KB.store.getArticles());
       refreshTreeAndList();
       const first = getFilteredArticles()[0];
       if (first) {

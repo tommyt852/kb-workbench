@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "app": "kb",
   "updatedAt": "2026-09-14T17:50:39.000Z",
   "meta": {},
@@ -14,6 +14,8 @@
         "security",
         "oauth"
       ],
+      "author": "Alice Chen",
+      "editedBy": "Bob Lee",
       "createdAt": "2026-09-14T17:50:39.000Z",
       "updatedAt": "2026-09-14T17:50:39.000Z",
       "extra": {}
@@ -28,6 +30,8 @@
         "security",
         "jwt"
       ],
+      "author": "Alice Chen",
+      "editedBy": "Alice Chen",
       "createdAt": "2026-09-14T17:50:39.000Z",
       "updatedAt": "2026-09-14T17:50:39.000Z",
       "extra": {}
@@ -42,6 +46,8 @@
         "ops",
         "deploy"
       ],
+      "author": "Carol Ng",
+      "editedBy": "Bob Lee",
       "createdAt": "2026-09-14T17:50:39.000Z",
       "updatedAt": "2026-09-14T17:50:39.000Z",
       "extra": {}
@@ -55,6 +61,8 @@
       "tags": [
         "product"
       ],
+      "author": "Dana Wong",
+      "editedBy": "Dana Wong",
       "createdAt": "2026-09-14T17:50:39.000Z",
       "updatedAt": "2026-09-14T17:50:39.000Z",
       "extra": {}
@@ -68,6 +76,8 @@
       "tags": [
         "misc"
       ],
+      "author": "",
+      "editedBy": "",
       "createdAt": "2026-09-14T17:50:39.000Z",
       "updatedAt": "2026-09-14T17:50:39.000Z",
       "extra": {}

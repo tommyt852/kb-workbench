@@ -26,10 +26,12 @@ C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypas
 
 - 左：分類樹（全部／未分類／由文章 category 推導），可摺疊（狀態存 localStorage）
 - 中：文章列表，可摺疊
-- 右：標題／slug／分類／tags + **Preview-first** 文章檢視
+- 右：標題／slug／分類／tags／author／editedBy + **Preview-first** 文章檢視
   - 開啟／選擇文章 → 預設 **Preview only**（渲染 Markdown）
   - 按 **編輯** → 左 Markdown（textarea）＋ 右即時 Preview
   - **完成** 或成功 **儲存** → 回到 Preview only
+  - 元資料面板可摺疊（localStorage）；分類／tags／author／editedBy 有既有值建議
+  - Tags：chips（可移除）+ 輸入建議；Author 一經儲存即鎖定唯讀；Edited by 可改
 - **手動儲存**（按鈕或 **Ctrl+S**）：成功後 POST → GET 重載，並返回 Preview
 - Dirty 導航：僅在有未儲存變更時顯示三鍵對話框「儲存並繼續／丟棄／取消」
 - 刪除／匯入覆寫需確認
@@ -61,8 +63,17 @@ window.KB_SERVER = {
 - 預設 **Preview only**（`marked` + `DOMPurify` via `markdown.js`）
 - **編輯** 開啟 Markdown textarea | Preview 左右分欄；輸入即時更新 Preview
 - 無 Toast UI／無 WYSIWYG；`body` 仍以 Markdown 存 kb.json
-- 元資料欄位兩邊模式都可見；Preview 時唯讀，Edit 時可改
+- 元資料欄位兩邊模式都可見；Preview 時唯讀，Edit 時可改（Author 已設定則永久唯讀）
 - 可選：雙擊 Preview 進入編輯
+
+## 元資料（M10）
+
+- **分類**：`<datalist>` 建議既有 category 路徑，可輸入新路徑
+- **Tags**：chips UI；從全部文章收集既有 tags 作建議；Enter／點選新增；× 移除；trim、保留首次大小寫、唔重複
+- **Author**／**Edited by**：第一級欄位（缺省 `""`）；datalist 建議；新建時皆空
+- **Author 鎖定**：文章已有非空 author（或儲存後寫入）→ UI 永久唯讀；空 author 可設定一次
+- **Edited by**：隨時可改；唔會自動填使用者名
+- 元資料面板摺疊狀態存 `localStorage`（`kb-workbench:layout.metaCollapsed`）
 
 ## 注意
 
@@ -84,3 +95,4 @@ window.KB_SERVER = {
 | M7 | polish：empty states、toasts、Ctrl+S、import/export、README |
 | M8 | Toast UI WYSIWYG editor（Markdown storage；單編輯窗格） |
 | M9 | preview-first；Edit → Markdown\|Preview split；Save → Preview；移除 Toast UI |
+| M10 | category autocomplete + tag chips；author／editedBy；元資料可摺疊 |

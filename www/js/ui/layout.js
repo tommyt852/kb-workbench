@@ -7,14 +7,15 @@
   function loadState() {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return { treeCollapsed: false, listCollapsed: false };
+      if (!raw) return { treeCollapsed: false, listCollapsed: false, metaCollapsed: false };
       const parsed = JSON.parse(raw);
       return {
         treeCollapsed: !!parsed.treeCollapsed,
-        listCollapsed: !!parsed.listCollapsed
+        listCollapsed: !!parsed.listCollapsed,
+        metaCollapsed: !!parsed.metaCollapsed
       };
     } catch (e) {
-      return { treeCollapsed: false, listCollapsed: false };
+      return { treeCollapsed: false, listCollapsed: false, metaCollapsed: false };
     }
   }
 
@@ -34,10 +35,17 @@
       if (!app) return;
       app.classList.toggle("tree-collapsed", !!this.state.treeCollapsed);
       app.classList.toggle("list-collapsed", !!this.state.listCollapsed);
+      app.classList.toggle("meta-collapsed", !!this.state.metaCollapsed);
       const btnTree = document.getElementById("btn-toggle-tree");
       const btnList = document.getElementById("btn-toggle-list");
+      const btnMeta = document.getElementById("btn-toggle-meta");
       if (btnTree) btnTree.setAttribute("aria-pressed", this.state.treeCollapsed ? "true" : "false");
       if (btnList) btnList.setAttribute("aria-pressed", this.state.listCollapsed ? "true" : "false");
+      if (btnMeta) {
+        btnMeta.setAttribute("aria-pressed", this.state.metaCollapsed ? "true" : "false");
+        btnMeta.title = this.state.metaCollapsed ? "展開元資料" : "摺疊元資料";
+        btnMeta.textContent = this.state.metaCollapsed ? "⌄" : "⌃";
+      }
     },
 
     toggleTree() {
@@ -52,11 +60,19 @@
       this.apply();
     },
 
+    toggleMeta() {
+      this.state.metaCollapsed = !this.state.metaCollapsed;
+      saveState(this.state);
+      this.apply();
+    },
+
     init() {
       const btnTree = document.getElementById("btn-toggle-tree");
       const btnList = document.getElementById("btn-toggle-list");
+      const btnMeta = document.getElementById("btn-toggle-meta");
       if (btnTree) btnTree.addEventListener("click", () => this.toggleTree());
       if (btnList) btnList.addEventListener("click", () => this.toggleList());
+      if (btnMeta) btnMeta.addEventListener("click", () => this.toggleMeta());
       this.apply();
     }
   };
