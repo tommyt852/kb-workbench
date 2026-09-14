@@ -22,7 +22,7 @@
       if (!sorted.length) {
         const empty = document.createElement("li");
         empty.className = "empty-hint";
-        empty.textContent = "沒有文章";
+        empty.textContent = "冇文章";
         el.appendChild(empty);
         return;
       }

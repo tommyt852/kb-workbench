@@ -75,7 +75,35 @@
     KB.ui.tree.render(all);
     const filtered = getFilteredArticles();
     KB.ui.list.setSelected(state.currentId);
-    KB.ui.list.render(filtered, categoryLabel(KB.ui.tree.getSelected()));
+    const hint = categoryLabel(KB.ui.tree.getSelected());
+    const q = ($("search-input") && $("search-input").value) || "";
+    const titleHint = String(q).trim() ? hint + " · 搜尋" : hint;
+    KB.ui.list.render(filtered, titleHint);
+    updateEmptyStates(filtered);
+  }
+
+  function updateEmptyStates(filtered) {
+    const listEl = $("article-list");
+    if (listEl && (!filtered || !filtered.length)) {
+      // list.js already shows 沒有文章; enrich if search active
+      const q = ($("search-input") && $("search-input").value) || "";
+      const empty = listEl.querySelector(".empty-hint");
+      if (empty) {
+        empty.textContent = String(q).trim()
+          ? "冇符合搜尋嘅文章"
+          : KB.store.getArticles().length
+            ? "呢個分類冇文章"
+            : "尚未有文章 — 按「＋ 新建」開始";
+      }
+    }
+    if (!state.currentId) {
+      const empty = $("editor-empty");
+      if (empty && !empty.classList.contains("hidden")) {
+        empty.textContent = KB.store.getArticles().length
+          ? "選擇或新建一篇文章"
+          : "知識庫係空嘅 — 按右上角「＋ 新建」新增第一篇";
+      }
+    }
   }
 
   function showEditor(show) {
@@ -90,6 +118,7 @@
       empty.classList.remove("hidden");
       panel.classList.add("hidden");
       panel.style.display = "none";
+      updateEmptyStates(getFilteredArticles());
     }
   }
 
@@ -158,7 +187,6 @@
 
   function discardCurrentEdits() {
     if (!state.currentId || !state.snapshot) {
-      // New unsaved article with no snapshot base — remove it
       if (state.currentId) {
         KB.store.data.articles = KB.store.getArticles().filter(function (a) {
           return a.id !== state.currentId;
@@ -308,11 +336,14 @@
       body: "",
       tags: []
     });
-    article.slug = KB.slug.uniqueSlug(KB.store.getArticles(), article.slug || article.title, article.id);
+    article.slug = KB.slug.uniqueSlug(
+      KB.store.getArticles(),
+      article.slug || article.title,
+      article.id
+    );
 
     KB.store.data.articles = KB.store.getArticles().concat([article]);
     KB.store.markDirty();
-    // snapshot = null means discard removes the new article
     state.currentId = article.id;
     state.draft = Object.assign({}, article);
     state.snapshot = null;
@@ -328,6 +359,86 @@
     if (KB.ui.editor) KB.ui.editor.focus();
     else $("field-title").focus();
     $("field-title").select();
+  }
+
+  function downloadExport() {
+    applyDraftToStore();
+    const payload = Object.assign({}, KB.store.data, {
+      updatedAt: new Date().toISOString(),
+      app: "kb",
+      version: KB.store.data.version || 1
+    });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json;charset=utf-8"
+    });
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = URL.createObjectURL(blob);
+    a.download = "kb-" + stamp + ".json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 0);
+    toast("已匯出 JSON", "ok");
+  }
+
+  async function importFromObject(parsed) {
+    let doc;
+    try {
+      doc = KB.schema.normalizeDoc(parsed);
+    } catch (e) {
+      throw new Error("匯入失敗：格式不正確");
+    }
+    const ok = await KB.dialogs.confirm({
+      title: "匯入並覆寫",
+      message:
+        "匯入會覆寫而家記憶體入面嘅知識庫（" +
+        KB.store.getArticles().length +
+        " 篇 → " +
+        doc.articles.length +
+        " 篇）。未儲存變更會丟棄。確定繼續？",
+      okLabel: "覆寫匯入",
+      cancelLabel: "取消",
+      danger: true
+    });
+    if (!ok) {
+      toast("已取消匯入");
+      return;
+    }
+    KB.store.setData(doc);
+    KB.store.markDirty();
+    state.currentId = null;
+    fillEditor(null);
+    refreshTreeAndList();
+    const first = getFilteredArticles()[0];
+    if (first) {
+      KB.ui.list.setSelected(first.id);
+      fillEditor(first);
+      refreshTreeAndList();
+    }
+    toast("已匯入 " + doc.articles.length + " 篇文章（尚未儲存到伺服器）", "ok");
+  }
+
+  function onImportFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = function () {
+      toast("無法讀取檔案", "error");
+    };
+    reader.onload = function () {
+      try {
+        const text = String(reader.result || "").replace(/^\uFEFF/, "");
+        const parsed = JSON.parse(text);
+        importFromObject(parsed).catch(function (err) {
+          toast(err && err.message ? err.message : "匯入失敗", "error");
+        });
+      } catch (e) {
+        toast("匯入失敗：唔係有效 JSON", "error");
+      }
+    };
+    reader.readAsText(file, "utf-8");
   }
 
   async function boot() {
@@ -355,6 +466,16 @@
     const del = $("btn-delete");
     if (del) del.addEventListener("click", onDelete);
 
+    $("btn-export").addEventListener("click", downloadExport);
+    $("btn-import").addEventListener("click", function () {
+      $("import-file").click();
+    });
+    $("import-file").addEventListener("change", function (e) {
+      const file = e.target.files && e.target.files[0];
+      onImportFile(file);
+      e.target.value = "";
+    });
+
     const search = $("search-input");
     if (search) {
       search.addEventListener("input", function () {
@@ -367,6 +488,23 @@
       if (el) el.addEventListener("input", onFieldInput);
     });
 
+    // Ctrl+S / Cmd+S → save
+    document.addEventListener("keydown", function (e) {
+      const key = e.key || e.code;
+      if ((e.ctrlKey || e.metaKey) && (key === "s" || key === "S" || e.code === "KeyS")) {
+        e.preventDefault();
+        onSave(false).catch(function () {});
+      }
+    });
+
+    window.addEventListener("beforeunload", function (e) {
+      applyDraftToStore();
+      if (KB.store.dirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+
     try {
       await KB.store.load();
       refreshTreeAndList();
@@ -376,6 +514,7 @@
         fillEditor(first);
         refreshTreeAndList();
       } else showEditor(false);
+      toast("已載入知識庫", "ok");
     } catch (err) {
       console.error(err);
       toast(err && err.message ? err.message : "載入失敗", "error");
@@ -396,7 +535,9 @@
     guardDirty: guardDirty,
     onDelete: onDelete,
     onNew: onNew,
-    discardCurrentEdits: discardCurrentEdits
+    discardCurrentEdits: discardCurrentEdits,
+    downloadExport: downloadExport,
+    importFromObject: importFromObject
   };
 
   if (document.readyState === "loading") {
