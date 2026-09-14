@@ -4,106 +4,117 @@
 
   const editor = {
     _bound: false,
-    _instance: null,
+    _mode: "preview", // "preview" | "edit"
     _onChange: null,
-    _suppressChange: false,
+    _onModeChange: null,
 
     bind(opts) {
-      this._onChange = (opts && opts.onChange) || null;
+      if (this._bound) return;
       this._bound = true;
+      this._onChange = (opts && opts.onChange) || null;
+      this._onModeChange = (opts && opts.onModeChange) || null;
+      const self = this;
+      const body = document.getElementById("field-body");
+      if (body) {
+        body.addEventListener("input", function () {
+          self.updatePreview();
+          if (typeof self._onChange === "function") self._onChange();
+        });
+      }
+      const preview = document.getElementById("preview");
+      if (preview) {
+        preview.addEventListener("dblclick", function () {
+          if (self._mode === "preview") self.setMode("edit");
+        });
+      }
+      this.applyMode();
     },
 
-    /**
-     * Create Toast UI Editor once; reuse across article switches.
-     * Call after #editor-panel is visible so height layout is correct.
-     */
-    ensure() {
-      if (this._instance) return this._instance;
-      const el = document.getElementById("toastui-editor");
-      if (!el) return null;
-      const EditorCtor =
-        (global.toastui && global.toastui.Editor) ||
-        (global.toastui && global.toastui.default && global.toastui.default.Editor);
-      if (!EditorCtor) {
-        console.error("Toast UI Editor not loaded (toastui.Editor missing)");
-        return null;
+    getMode() {
+      return this._mode;
+    },
+
+    setMode(mode) {
+      const next = mode === "edit" ? "edit" : "preview";
+      if (this._mode === next) {
+        this.applyMode();
+        return;
       }
-      const self = this;
-      this._instance = new EditorCtor({
-        el: el,
-        height: "100%",
-        initialEditType: "wysiwyg",
-        previewStyle: "vertical",
-        hideModeSwitch: false,
-        usageStatistics: false,
-        theme: "dark",
-        autofocus: false,
-        toolbarItems: [
-          ["heading", "bold", "italic", "strike"],
-          ["hr", "quote"],
-          ["ul", "ol", "task", "indent", "outdent"],
-          ["table", "image", "link"],
-          ["code", "codeblock"]
-        ],
-        events: {
-          change: function () {
-            if (self._suppressChange) return;
-            if (typeof self._onChange === "function") self._onChange();
+      this._mode = next;
+      this.applyMode();
+      if (typeof this._onModeChange === "function") this._onModeChange(this._mode);
+    },
+
+    applyMode() {
+      const view = document.getElementById("article-view");
+      const btnEdit = document.getElementById("btn-edit");
+      const btnDone = document.getElementById("btn-done");
+      const heading = document.getElementById("preview-heading");
+      const metaInputs = ["field-title", "field-slug", "field-category", "field-tags"];
+
+      if (view) {
+        view.classList.toggle("mode-preview", this._mode === "preview");
+        view.classList.toggle("mode-edit", this._mode === "edit");
+      }
+      if (btnEdit) btnEdit.classList.toggle("hidden", this._mode === "edit");
+      if (btnDone) btnDone.classList.toggle("hidden", this._mode === "preview");
+      if (heading) {
+        heading.textContent = this._mode === "preview" ? "Preview" : "Preview";
+      }
+
+      const editable = this._mode === "edit";
+      metaInputs.forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.readOnly = !editable;
+      });
+
+      this.updatePreview();
+      if (this._mode === "edit") {
+        const body = document.getElementById("field-body");
+        if (body) {
+          try {
+            body.focus();
+          } catch (e) {
+            /* ignore */
           }
         }
-      });
-      return this._instance;
+      }
     },
 
-    destroy() {
-      if (this._instance) {
-        try {
-          this._instance.destroy();
-        } catch (e) {
-          /* ignore */
-        }
-        this._instance = null;
+    updatePreview() {
+      const body = document.getElementById("field-body");
+      const preview = document.getElementById("preview");
+      if (!preview) return;
+      const md = body ? body.value : "";
+      if (KB.markdown && typeof KB.markdown.render === "function") {
+        const html = KB.markdown.render(md);
+        preview.innerHTML =
+          html && String(html).trim()
+            ? html
+            : '<p class="preview-empty">（空內容）</p>';
+      } else {
+        preview.textContent = md;
       }
-      const el = document.getElementById("toastui-editor");
-      if (el) el.innerHTML = "";
+    },
+
+    setBody(md) {
+      const body = document.getElementById("field-body");
+      if (body) body.value = md == null ? "" : String(md);
+      this.updatePreview();
+    },
+
+    getBody() {
+      const body = document.getElementById("field-body");
+      return body ? body.value : "";
     },
 
     setMarkdown(md) {
-      const inst = this.ensure();
-      if (!inst) return;
-      this._suppressChange = true;
-      try {
-        inst.setMarkdown(md == null ? "" : String(md), false);
-      } finally {
-        // defer clear so Toast UI internal sync doesn't fire dirty
-        const self = this;
-        setTimeout(function () {
-          self._suppressChange = false;
-        }, 0);
-      }
+      this.setBody(md);
     },
 
     getMarkdown() {
-      if (!this._instance) return "";
-      try {
-        return this._instance.getMarkdown() || "";
-      } catch (e) {
-        return "";
-      }
+      return this.getBody();
     },
-
-    /** @deprecated alias — prefer setMarkdown */
-    setBody(md) {
-      this.setMarkdown(md);
-    },
-
-    /** @deprecated alias — prefer getMarkdown */
-    getBody() {
-      return this.getMarkdown();
-    },
-
-    /** No separate preview pane in M8 WYSIWYG. */
-    updatePreview() {},
 
     focus() {
       const title = document.getElementById("field-title");
@@ -111,10 +122,11 @@
     },
 
     focusEditor() {
-      const inst = this.ensure();
-      if (inst && typeof inst.focus === "function") {
+      if (this._mode !== "edit") this.setMode("edit");
+      const body = document.getElementById("field-body");
+      if (body) {
         try {
-          inst.focus();
+          body.focus();
         } catch (e) {
           /* ignore */
         }

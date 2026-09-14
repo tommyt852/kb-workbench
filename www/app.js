@@ -123,19 +123,35 @@
   }
 
   function renderPreview() {
-    /* M8: WYSIWYG is the visual surface; no side-by-side preview */
+    if (KB.ui.editor) KB.ui.editor.updatePreview();
+    else {
+      const body = ($("field-body") && $("field-body").value) || "";
+      const el = $("preview");
+      if (!el) return;
+      if (KB.markdown) el.innerHTML = KB.markdown.render(body);
+      else el.textContent = body;
+    }
   }
 
   function getEditorMarkdown() {
-    if (KB.ui.editor && typeof KB.ui.editor.getMarkdown === "function") {
-      return KB.ui.editor.getMarkdown();
+    if (KB.ui.editor && typeof KB.ui.editor.getBody === "function") {
+      return KB.ui.editor.getBody();
     }
-    return "";
+    return ($("field-body") && $("field-body").value) || "";
   }
 
   function setEditorMarkdown(md) {
-    if (KB.ui.editor && typeof KB.ui.editor.setMarkdown === "function") {
-      KB.ui.editor.setMarkdown(md == null ? "" : String(md));
+    if (KB.ui.editor && typeof KB.ui.editor.setBody === "function") {
+      KB.ui.editor.setBody(md == null ? "" : String(md));
+    } else if ($("field-body")) {
+      $("field-body").value = md == null ? "" : String(md);
+      renderPreview();
+    }
+  }
+
+  function setViewMode(mode) {
+    if (KB.ui.editor && typeof KB.ui.editor.setMode === "function") {
+      KB.ui.editor.setMode(mode);
     }
   }
 
@@ -158,6 +174,17 @@
     $("field-category").value = article.category || "";
     $("field-tags").value = (article.tags || []).join(", ");
     setEditorMarkdown(article.body || "");
+    setViewMode("preview");
+  }
+
+  function fieldsEqual(a, b) {
+    return (
+      String(a.title || "") === String(b.title || "") &&
+      String(a.slug || "") === String(b.slug || "") &&
+      String(a.category || "") === String(b.category || "") &&
+      String(a.body || "") === String(b.body || "") &&
+      JSON.stringify(a.tags || []) === JSON.stringify(b.tags || [])
+    );
   }
 
   function applyDraftToStore() {
@@ -173,7 +200,8 @@
         return t.trim();
       })
       .filter(Boolean);
-    const updated = Object.assign({}, articles[idx], {
+    const prev = articles[idx];
+    const nextFields = {
       title: $("field-title").value,
       slug: $("field-slug").value.trim(),
       category: String($("field-category").value || "")
@@ -181,7 +209,13 @@
         .replace(/\\/g, "/")
         .replace(/^\/+|\/+$/g, ""),
       tags: tags,
-      body: getEditorMarkdown(),
+      body: getEditorMarkdown()
+    };
+    if (fieldsEqual(prev, nextFields)) {
+      state.draft = Object.assign({}, prev);
+      return;
+    }
+    const updated = Object.assign({}, prev, nextFields, {
       updatedAt: new Date().toISOString()
     });
     articles[idx] = updated;
@@ -254,6 +288,7 @@
       state.slugManual = true;
     }
     applyDraftToStore();
+    if (e && e.target && e.target.id === "field-body") renderPreview();
     if (
       e &&
       e.target &&
@@ -277,6 +312,7 @@
         });
         if (a) fillEditor(a);
       }
+      setViewMode("preview");
       if (!silent) toast("已儲存", "ok");
     } catch (err) {
       console.error(err);
@@ -358,6 +394,7 @@
     $("field-category").value = article.category || "";
     $("field-tags").value = "";
     setEditorMarkdown("");
+    setViewMode("edit");
     refreshTreeAndList();
     if (KB.ui.editor) KB.ui.editor.focus();
     else $("field-title").focus();
@@ -476,6 +513,21 @@
     const del = $("btn-delete");
     if (del) del.addEventListener("click", onDelete);
 
+    const btnEdit = $("btn-edit");
+    if (btnEdit) {
+      btnEdit.addEventListener("click", function () {
+        setViewMode("edit");
+      });
+    }
+    const btnDone = $("btn-done");
+    if (btnDone) {
+      btnDone.addEventListener("click", function () {
+        applyDraftToStore();
+        renderPreview();
+        setViewMode("preview");
+      });
+    }
+
     $("btn-export").addEventListener("click", downloadExport);
     $("btn-import").addEventListener("click", function () {
       $("import-file").click();
@@ -493,7 +545,7 @@
       });
     }
 
-    ["field-title", "field-slug", "field-category", "field-tags"].forEach(function (id) {
+    ["field-title", "field-slug", "field-category", "field-tags", "field-body"].forEach(function (id) {
       const el = $(id);
       if (el) el.addEventListener("input", onFieldInput);
     });
@@ -538,6 +590,7 @@
     fillEditor: fillEditor,
     applyDraftToStore: applyDraftToStore,
     renderPreview: renderPreview,
+    setViewMode: setViewMode,
     getFilteredArticles: getFilteredArticles,
     toast: toast,
     onSave: onSave,

@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KB Workbench</title>
-  <link rel="stylesheet" href="vendor/toastui/toastui-editor.min.css" />
-  <link rel="stylesheet" href="vendor/toastui/theme/toastui-editor-dark.min.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -48,12 +46,20 @@
             <label>分類 <input id="field-category" type="text" placeholder="例如 工程/API/Auth" /></label>
             <label>Tags <input id="field-tags" type="text" placeholder="逗號分隔" /></label>
             <div class="meta-actions">
+              <button type="button" class="btn" id="btn-edit">編輯</button>
+              <button type="button" class="btn ghost hidden" id="btn-done">完成</button>
               <button type="button" class="btn ghost danger" id="btn-delete">刪除</button>
             </div>
           </div>
-          <div class="editor-body">
-            <div class="editor-body-h">內容（WYSIWYG · Markdown 儲存）</div>
-            <div id="toastui-editor"></div>
+          <div id="article-view" class="article-view mode-preview">
+            <div class="col col-md">
+              <div class="col-h">Markdown</div>
+              <textarea id="field-body" spellcheck="false"></textarea>
+            </div>
+            <div class="col col-preview">
+              <div class="col-h" id="preview-heading">Preview</div>
+              <div class="preview" id="preview"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -65,7 +71,6 @@
   <script src="config.js"></script>
   <script src="vendor/marked/marked.min.js"></script>
   <script src="vendor/dompurify/purify.min.js"></script>
-  <script src="vendor/toastui/toastui-editor-all.min.js"></script>
   <script src="js/slug.js"></script>
   <script src="js/schema.js"></script>
   <script src="js/store.js"></script>
