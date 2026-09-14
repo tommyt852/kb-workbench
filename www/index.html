@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KB Workbench</title>
+  <link rel="stylesheet" href="vendor/toastui/toastui-editor.min.css" />
+  <link rel="stylesheet" href="vendor/toastui/theme/toastui-editor-dark.min.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -49,15 +51,9 @@
               <button type="button" class="btn ghost danger" id="btn-delete">刪除</button>
             </div>
           </div>
-          <div class="split">
-            <div class="col">
-              <div class="col-h">Markdown</div>
-              <textarea id="field-body" spellcheck="false"></textarea>
-            </div>
-            <div class="col">
-              <div class="col-h">Preview</div>
-              <div class="preview" id="preview"></div>
-            </div>
+          <div class="editor-body">
+            <div class="editor-body-h">內容（WYSIWYG · Markdown 儲存）</div>
+            <div id="toastui-editor"></div>
           </div>
         </div>
       </section>
@@ -69,6 +65,7 @@
   <script src="config.js"></script>
   <script src="vendor/marked/marked.min.js"></script>
   <script src="vendor/dompurify/purify.min.js"></script>
+  <script src="vendor/toastui/toastui-editor-all.min.js"></script>
   <script src="js/slug.js"></script>
   <script src="js/schema.js"></script>
   <script src="js/store.js"></script>

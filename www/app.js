@@ -123,13 +123,19 @@
   }
 
   function renderPreview() {
-    if (KB.ui.editor) KB.ui.editor.updatePreview();
-    else {
-      const body = ($("field-body") && $("field-body").value) || "";
-      const el = $("preview");
-      if (!el) return;
-      if (KB.markdown) el.innerHTML = KB.markdown.render(body);
-      else el.textContent = body;
+    /* M8: WYSIWYG is the visual surface; no side-by-side preview */
+  }
+
+  function getEditorMarkdown() {
+    if (KB.ui.editor && typeof KB.ui.editor.getMarkdown === "function") {
+      return KB.ui.editor.getMarkdown();
+    }
+    return "";
+  }
+
+  function setEditorMarkdown(md) {
+    if (KB.ui.editor && typeof KB.ui.editor.setMarkdown === "function") {
+      KB.ui.editor.setMarkdown(md == null ? "" : String(md));
     }
   }
 
@@ -151,8 +157,7 @@
     $("field-slug").value = article.slug || "";
     $("field-category").value = article.category || "";
     $("field-tags").value = (article.tags || []).join(", ");
-    $("field-body").value = article.body || "";
-    renderPreview();
+    setEditorMarkdown(article.body || "");
   }
 
   function applyDraftToStore() {
@@ -176,7 +181,7 @@
         .replace(/\\/g, "/")
         .replace(/^\/+|\/+$/g, ""),
       tags: tags,
-      body: $("field-body").value,
+      body: getEditorMarkdown(),
       updatedAt: new Date().toISOString()
     });
     articles[idx] = updated;
@@ -249,7 +254,6 @@
       state.slugManual = true;
     }
     applyDraftToStore();
-    if (e && e.target && e.target.id === "field-body") renderPreview();
     if (
       e &&
       e.target &&
@@ -353,8 +357,7 @@
     $("field-slug").value = article.slug;
     $("field-category").value = article.category || "";
     $("field-tags").value = "";
-    $("field-body").value = "";
-    renderPreview();
+    setEditorMarkdown("");
     refreshTreeAndList();
     if (KB.ui.editor) KB.ui.editor.focus();
     else $("field-title").focus();
@@ -443,7 +446,14 @@
 
   async function boot() {
     KB.ui.layout.init();
-    if (KB.ui.editor) KB.ui.editor.bind({});
+    if (KB.ui.editor) {
+      KB.ui.editor.bind({
+        onChange: function () {
+          if (!state.currentId) return;
+          applyDraftToStore();
+        }
+      });
+    }
 
     KB.store.onChange(function () {
       updateSaveUI();
@@ -483,7 +493,7 @@
       });
     }
 
-    ["field-title", "field-slug", "field-category", "field-tags", "field-body"].forEach(function (id) {
+    ["field-title", "field-slug", "field-category", "field-tags"].forEach(function (id) {
       const el = $(id);
       if (el) el.addEventListener("input", onFieldInput);
     });

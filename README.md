@@ -26,7 +26,7 @@ C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypas
 
 - 左：分類樹（全部／未分類／由文章 category 推導），可摺疊（狀態存 localStorage）
 - 中：文章列表，可摺疊
-- 右：標題／slug／分類／tags + Markdown｜Preview 並排
+- 右：標題／slug／分類／tags + **Toast UI WYSIWYG**（可切換 Markdown 模式；`body` 仍以 Markdown 存 kb.json）
 - **手動儲存**（按鈕或 **Ctrl+S**）：成功後 POST → GET 重載
 - Dirty 導航：三鍵對話框「儲存並繼續／丟棄／取消」
 - 刪除／匯入覆寫需確認
@@ -53,10 +53,17 @@ window.KB_SERVER = {
 };
 ```
 
+## 編輯器（M8）
+
+- 預設 **wysiwyg**（Word-like），工具列提供粗體／斜體／標題／列表／連結／程式碼等
+- 內建模式切換可改睇／改 **Markdown** 原始碼
+- 儲存時仍 POST Markdown `body`（唔係 HTML）
+- 資產：`www/vendor/toastui/toastui-editor-all.min.js`、`toastui-editor.min.css`、`theme/toastui-editor-dark.min.css`
+
 ## 注意
 
 - **唔好改 `web.ps1`**（由 daily-work 原樣複製）
-- Vendor：`www/vendor/marked`、`www/vendor/dompurify`（min builds 已入 repo）
+- Vendor：`www/vendor/marked`、`www/vendor/dompurify`、`www/vendor/toastui`（Toast UI Editor 3.2.2 browser builds + dark theme）
 - 腳本順序：`config.js` → vendor → 各 `js/*` → `app.js`（非 ES modules）
 
 ## 里程碑
@@ -71,3 +78,4 @@ window.KB_SERVER = {
 | M5 | dialogs（刪除確認 + dirty 三鍵） |
 | M6 | 完整 CRUD + search |
 | M7 | polish：empty states、toasts、Ctrl+S、import/export、README |
+| M8 | Toast UI WYSIWYG editor（Markdown storage；單編輯窗格） |
