@@ -8,7 +8,8 @@
   const state = {
     currentId: null,
     draft: null,
-    slugManual: false
+    slugManual: false,
+    snapshot: null // last clean article copy for discard
   };
 
   function statusLabel(store) {
@@ -26,6 +27,21 @@
       default:
         return "—";
     }
+  }
+
+  function toast(msg, kind) {
+    const host = $("toast-host");
+    if (!host) {
+      console.log(msg);
+      return;
+    }
+    const el = document.createElement("div");
+    el.className = "toast" + (kind ? " " + kind : "");
+    el.textContent = msg;
+    host.appendChild(el);
+    setTimeout(function () {
+      el.remove();
+    }, 3200);
   }
 
   function updateSaveUI() {
@@ -52,8 +68,8 @@
     const q = ($("search-input") && $("search-input").value) || "";
     if (KB.search && typeof KB.search.filter === "function") {
       articles = KB.search.filter(articles, q);
-    } else if (q.trim()) {
-      const needle = q.trim().toLowerCase();
+    } else if (String(q).trim()) {
+      const needle = String(q).trim().toLowerCase();
       articles = articles.filter(function (a) {
         const hay = [a.title, a.body, a.slug, a.category, (a.tags || []).join(" ")]
           .join("\n")
@@ -87,16 +103,29 @@
     }
   }
 
+  function renderPreview() {
+    if (KB.ui.editor) KB.ui.editor.updatePreview();
+    else {
+      const body = ($("field-body") && $("field-body").value) || "";
+      const el = $("preview");
+      if (!el) return;
+      if (KB.markdown) el.innerHTML = KB.markdown.render(body);
+      else el.textContent = body;
+    }
+  }
+
   function fillEditor(article) {
     if (!article) {
       state.currentId = null;
       state.draft = null;
+      state.snapshot = null;
       state.slugManual = false;
       showEditor(false);
       return;
     }
     state.currentId = article.id;
     state.draft = Object.assign({}, article);
+    state.snapshot = JSON.parse(JSON.stringify(article));
     state.slugManual = true;
     showEditor(true);
     $("field-title").value = article.title || "";
@@ -107,19 +136,8 @@
     renderPreview();
   }
 
-  function renderPreview() {
-    const body = ($("field-body") && $("field-body").value) || "";
-    const el = $("preview");
-    if (!el) return;
-    if (KB.markdown && typeof KB.markdown.render === "function") {
-      el.innerHTML = KB.markdown.render(body);
-    } else {
-      el.textContent = body;
-    }
-  }
-
   function applyDraftToStore() {
-    if (!state.currentId || !state.draft) return;
+    if (!state.currentId) return;
     const articles = KB.store.getArticles();
     const idx = articles.findIndex(function (a) {
       return a.id === state.currentId;
@@ -134,7 +152,10 @@
     const updated = Object.assign({}, articles[idx], {
       title: $("field-title").value,
       slug: $("field-slug").value.trim(),
-      category: $("field-category").value.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, ""),
+      category: String($("field-category").value || "")
+        .trim()
+        .replace(/\\/g, "/")
+        .replace(/^\/+|\/+$/g, ""),
       tags: tags,
       body: $("field-body").value,
       updatedAt: new Date().toISOString()
@@ -145,23 +166,75 @@
     KB.store.markDirty();
   }
 
+  function discardCurrentEdits() {
+    if (!state.currentId || !state.snapshot) return;
+    const articles = KB.store.getArticles();
+    const idx = articles.findIndex(function (a) {
+      return a.id === state.currentId;
+    });
+    if (idx >= 0) {
+      articles[idx] = JSON.parse(JSON.stringify(state.snapshot));
+      KB.store.data.articles = articles;
+    }
+    // If the only dirty was this article and store was dirty solely from it,
+    // we re-check: compare whole doc is hard; mark clean only if user saved before.
+    // Safer: leave dirty flag if other changes exist — for single-editor UX, clear dirty.
+    KB.store.dirty = false;
+    KB.store.status = "saved";
+    KB.store._emit();
+    fillEditor(state.snapshot);
+  }
+
+  /**
+   * Run before navigating away from current article when dirty.
+   * @returns {Promise<boolean>} true if allowed to continue
+   */
+  async function guardDirty() {
+    applyDraftToStore();
+    if (!KB.store.dirty) return true;
+    const choice = await KB.dialogs.unsavedGuard({
+      title: "有未儲存變更",
+      message: "而家有未儲存嘅修改。想點處理？"
+    });
+    if (choice === "cancel") return false;
+    if (choice === "discard") {
+      discardCurrentEdits();
+      return true;
+    }
+    if (choice === "save") {
+      try {
+        await onSave(true);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  }
+
   function onFieldInput(e) {
     if (!state.currentId) return;
     if (e && e.target && e.target.id === "field-title" && !state.slugManual) {
-      const slug = KB.slug.slugify($("field-title").value);
-      $("field-slug").value = slug;
+      $("field-slug").value = KB.slug.slugify($("field-title").value);
     }
     if (e && e.target && e.target.id === "field-slug") {
       state.slugManual = true;
     }
     applyDraftToStore();
     if (e && e.target && e.target.id === "field-body") renderPreview();
-    if (e && e.target && (e.target.id === "field-category" || e.target.id === "field-title" || e.target.id === "field-tags")) {
+    if (
+      e &&
+      e.target &&
+      (e.target.id === "field-category" ||
+        e.target.id === "field-title" ||
+        e.target.id === "field-tags" ||
+        e.target.id === "field-slug")
+    ) {
       refreshTreeAndList();
     }
   }
 
-  async function onSave() {
+  async function onSave(silent) {
     applyDraftToStore();
     try {
       await KB.store.save();
@@ -170,31 +243,25 @@
         const a = KB.store.getArticles().find(function (x) {
           return x.id === state.currentId;
         });
-        if (a) fillEditor(a);
+        if (a) {
+          fillEditor(a);
+        }
       }
-      toast("已儲存", "ok");
+      if (!silent) toast("已儲存", "ok");
     } catch (err) {
       console.error(err);
       toast(err && err.message ? err.message : "儲存失敗", "error");
+      throw err;
     }
   }
 
-  function toast(msg, kind) {
-    const host = $("toast-host");
-    if (!host) {
-      console.log(msg);
+  async function selectArticle(id) {
+    if (id === state.currentId) return;
+    const ok = await guardDirty();
+    if (!ok) {
+      refreshTreeAndList();
       return;
     }
-    const el = document.createElement("div");
-    el.className = "toast" + (kind ? " " + kind : "");
-    el.textContent = msg;
-    host.appendChild(el);
-    setTimeout(function () {
-      el.remove();
-    }, 3200);
-  }
-
-  function selectArticle(id) {
     const a = KB.store.getArticles().find(function (x) {
       return x.id === id;
     });
@@ -203,30 +270,57 @@
     refreshTreeAndList();
   }
 
+  async function onDelete() {
+    if (!state.currentId) return;
+    const a = KB.store.getArticles().find(function (x) {
+      return x.id === state.currentId;
+    });
+    const title = (a && a.title) || "呢篇";
+    const ok = await KB.dialogs.confirm({
+      title: "刪除文章",
+      message: "確定刪除「" + title + "」？此操作會標為未儲存，儲存後先至寫入伺服器。",
+      okLabel: "刪除",
+      cancelLabel: "取消",
+      danger: true
+    });
+    if (!ok) return;
+    const articles = KB.store.getArticles().filter(function (x) {
+      return x.id !== state.currentId;
+    });
+    KB.store.data.articles = articles;
+    KB.store.markDirty();
+    state.currentId = null;
+    state.draft = null;
+    state.snapshot = null;
+    showEditor(false);
+    refreshTreeAndList();
+    toast("已刪除（尚未儲存到伺服器）");
+  }
+
   async function boot() {
     KB.ui.layout.init();
     if (KB.ui.editor) {
-      KB.ui.editor.bind({
-        onChange: function () {
-          /* preview handled inside editor; draft applied via field listeners */
-        }
-      });
+      KB.ui.editor.bind({});
     }
-
     KB.store.onChange(function () {
       updateSaveUI();
       refreshTreeAndList();
     });
     updateSaveUI();
 
-    KB.ui.tree.onSelect = function () {
+    KB.ui.tree.onSelect = async function () {
       refreshTreeAndList();
     };
     KB.ui.list.onSelect = function (id) {
       selectArticle(id);
     };
 
-    $("btn-save").addEventListener("click", onSave);
+    $("btn-save").addEventListener("click", function () {
+      onSave(false);
+    });
+    const del = $("btn-delete");
+    if (del) del.addEventListener("click", onDelete);
+
     ["field-title", "field-slug", "field-category", "field-tags", "field-body"].forEach(function (id) {
       const el = $(id);
       if (el) el.addEventListener("input", onFieldInput);
@@ -236,15 +330,17 @@
       await KB.store.load();
       refreshTreeAndList();
       const first = getFilteredArticles()[0];
-      if (first) selectArticle(first.id);
-      else showEditor(false);
+      if (first) {
+        KB.ui.list.setSelected(first.id);
+        fillEditor(first);
+        refreshTreeAndList();
+      } else showEditor(false);
     } catch (err) {
       console.error(err);
       toast(err && err.message ? err.message : "載入失敗", "error");
     }
   }
 
-  // expose helpers for later milestones
   KB.app = {
     state: state,
     refreshTreeAndList: refreshTreeAndList,
@@ -255,7 +351,10 @@
     getFilteredArticles: getFilteredArticles,
     toast: toast,
     onSave: onSave,
-    showEditor: showEditor
+    showEditor: showEditor,
+    guardDirty: guardDirty,
+    onDelete: onDelete,
+    discardCurrentEdits: discardCurrentEdits
   };
 
   if (document.readyState === "loading") {
