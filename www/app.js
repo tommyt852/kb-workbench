@@ -205,6 +205,14 @@
 
   async function boot() {
     KB.ui.layout.init();
+    if (KB.ui.editor) {
+      KB.ui.editor.bind({
+        onChange: function () {
+          /* preview handled inside editor; draft applied via field listeners */
+        }
+      });
+    }
+
     KB.store.onChange(function () {
       updateSaveUI();
       refreshTreeAndList();
