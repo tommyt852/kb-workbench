@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "app": "kb",
+  "updatedAt": "2026-09-14T17:50:39.000Z",
+  "meta": {},
+  "articles": [
+    {
+      "id": "a1",
+      "slug": "oauth-flow",
+      "title": "OAuth flow",
+      "body": "## Overview\n\nAuthorization code flow with PKCE.\n\n## Steps\n\n1. Client creates `code_verifier`\n2. Redirect to IdP with `code_challenge`\n3. Exchange code for tokens\n\n```bash\ncurl -X POST /oauth/token\n```\n\n## Notes\n\n- Prefer **public clients** with PKCE\n- Store refresh tokens securely\n",
+      "category": "工程/API/Auth",
+      "tags": [
+        "security",
+        "oauth"
+      ],
+      "createdAt": "2026-09-14T17:50:39.000Z",
+      "updatedAt": "2026-09-14T17:50:39.000Z",
+      "extra": {}
+    },
+    {
+      "id": "a2",
+      "slug": "jwt-notes",
+      "title": "JWT notes",
+      "body": "## JWT\n\n- Header / Payload / Signature\n- Prefer short-lived access tokens\n- Validate `aud` and `iss`\n",
+      "category": "工程/API/Auth",
+      "tags": [
+        "security",
+        "jwt"
+      ],
+      "createdAt": "2026-09-14T17:50:39.000Z",
+      "updatedAt": "2026-09-14T17:50:39.000Z",
+      "extra": {}
+    },
+    {
+      "id": "a3",
+      "slug": "deploy-checklist",
+      "title": "Deploy checklist",
+      "body": "## Pre-deploy\n\n- [ ] Migrations\n- [ ] Env vars\n- [ ] Health check\n\n## Rollback\n\nKeep previous image tagged.\n",
+      "category": "工程/Deploy",
+      "tags": [
+        "ops",
+        "deploy"
+      ],
+      "createdAt": "2026-09-14T17:50:39.000Z",
+      "updatedAt": "2026-09-14T17:50:39.000Z",
+      "extra": {}
+    },
+    {
+      "id": "a4",
+      "slug": "q3-roadmap",
+      "title": "Q3 Roadmap",
+      "body": "## Themes\n\n1. Search UX\n2. Offline draft\n3. Import/export polish\n",
+      "category": "產品/Roadmap",
+      "tags": [
+        "product"
+      ],
+      "createdAt": "2026-09-14T17:50:39.000Z",
+      "updatedAt": "2026-09-14T17:50:39.000Z",
+      "extra": {}
+    },
+    {
+      "id": "a5",
+      "slug": "scratch-ideas",
+      "title": "Scratch ideas",
+      "body": "Uncategorized notes for later triage.\n\n- Dark theme polish\n- Keyboard shortcuts\n",
+      "category": "",
+      "tags": [
+        "misc"
+      ],
+      "createdAt": "2026-09-14T17:50:39.000Z",
+      "updatedAt": "2026-09-14T17:50:39.000Z",
+      "extra": {}
+    }
+  ]
+}
