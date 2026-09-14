@@ -18,23 +18,31 @@
     return "http://" + host + ":" + port;
   }
 
-  function requestUrl(path) {
-    const origin = getOrigin();
+  function isOnConfiguredLocalServer() {
     try {
-      const configured = new URL(origin);
+      const configured = new URL(getOrigin());
       const herePort = global.location.port || (global.location.protocol === "https:" ? "443" : "80");
       const cfgPort = configured.port || (configured.protocol === "https:" ? "443" : "80");
-      if (
+      return (
         global.location.protocol === configured.protocol &&
         global.location.hostname === configured.hostname &&
         herePort === cfgPort
-      ) {
-        return path;
-      }
+      );
     } catch (e) {
-      /* absolute */
+      return false;
     }
-    return origin + path;
+  }
+
+  /**
+   * Local server (KB_SERVER host:port): absolute paths (/data/kb.json, /api/data).
+   * Elsewhere (e.g. GitHub Pages): same-origin relative paths so they resolve
+   * under the project base (e.g. /kb-workbench/data/kb.json). Never rewrite to localhost.
+   */
+  function requestUrl(path) {
+    if (isOnConfiguredLocalServer()) {
+      return path;
+    }
+    return String(path || "").replace(/^\//, "");
   }
 
   async function parseJsonBody(res) {
