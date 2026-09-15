@@ -65,6 +65,7 @@ window.KB_SERVER = {
 - **EasyMDE**（M12，vendored `www/vendor/easymde/`，無 runtime CDN／無 Font Awesome CDN）：
   - 較大工具列按鈕（約 38px）；粗體／斜體／**H1／H2／H3**（分開）／列表／引用／程式碼／連結／水平線／undo／redo
   - Bold／Italic／列表／引用等由 EasyMDE 原生 **toggle**；連結可 prompt URL
+  - Inline／line wrap 前會去掉選區尾端換行（雙擊整行時關閉標記／列表前綴唔會掉去下一行）
   - **唔用** EasyMDE 內建 preview／side-by-side／fullscreen 做主 UX（右側維持本專案 Preview）
 - 無 Toast UI／無 WYSIWYG／無 Markdown↔WYSIWYG 模式切換；`body` 仍以 Markdown 存 kb.json
 - 元資料欄位兩邊模式都可見；Preview 時唯讀，Edit 時可改（Author 已設定則永久唯讀）
@@ -102,3 +103,4 @@ window.KB_SERVER = {
 | M10 | category autocomplete + tag chips；author／editedBy；元資料可摺疊 |
 | M11 | Markdown 格式工具列（Edit split 左側）；自訂 toolbar，非 Toast UI／EasyMDE |
 | M12 | EasyMDE 較大工具列（左編輯）；右側維持 marked+DOMPurify Preview；vendored，無 CDN |
+| fix | 整行選取 wrap 時關閉 markdown 標記留喺同行（trim trailing `\n`） |
