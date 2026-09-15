@@ -6,19 +6,97 @@
     return document.getElementById("field-body");
   }
 
+
+  /**
+   * Shrink CodeMirror selection so trailing newlines (and an optional leading
+   * newline) are not part of the wrapped/toggled region.
+   * Double-click line selection often includes the trailing `\n`, which made
+   * EasyMDE emit `**text\n**` (closing marks on the next line) or put list /
+   * heading markers on the following empty line.
+   *
+   * @param {CodeMirror} cm
+   * @param {"inline"|"line"} mode
+   */
+  function trimSelectionEdges(cm, mode) {
+    if (!cm || typeof cm.getCursor !== "function") return;
+    const from = cm.getCursor("from");
+    const to = cm.getCursor("to");
+    if (from.line === to.line && from.ch === to.ch) return;
+
+    let start = { line: from.line, ch: from.ch };
+    let end = { line: to.line, ch: to.ch };
+
+    if (mode === "line") {
+      // Exclusive end at ch 0 of the next line → only the prior line's newline
+      while (end.line > start.line && end.ch === 0) {
+        const prev = end.line - 1;
+        end = { line: prev, ch: (cm.getLine(prev) || "").length };
+      }
+    } else {
+      // inline: drop trailing \r?\n from the selected text; optionally one leading newline
+      const text = cm.getRange(start, end);
+      let startIdx = 0;
+      let endIdx = text.length;
+      while (
+        endIdx > startIdx &&
+        (text.charAt(endIdx - 1) === "\n" || text.charAt(endIdx - 1) === "\r")
+      ) {
+        endIdx--;
+      }
+      if (endIdx > startIdx) {
+        if (text.charAt(startIdx) === "\r" && text.charAt(startIdx + 1) === "\n") {
+          startIdx += 2;
+        } else if (text.charAt(startIdx) === "\n") {
+          startIdx += 1;
+        }
+      }
+      if (startIdx !== 0 || endIdx !== text.length) {
+        if (typeof cm.indexFromPos === "function" && typeof cm.posFromIndex === "function") {
+          const base = cm.indexFromPos(start);
+          start = cm.posFromIndex(base + startIdx);
+          end = cm.posFromIndex(base + endIdx);
+        } else {
+          // Fallback without index helpers: handle common whole-line case
+          while (end.line > start.line && end.ch === 0) {
+            const prev = end.line - 1;
+            end = { line: prev, ch: (cm.getLine(prev) || "").length };
+          }
+        }
+      }
+    }
+
+    if (
+      start.line !== from.line ||
+      start.ch !== from.ch ||
+      end.line !== to.line ||
+      end.ch !== to.ch
+    ) {
+      cm.setSelection(start, end);
+    }
+  }
+
+  /** Wrap an EasyMDE toolbar/shortcut action to trim selection first. */
+  function withTrimmedSelection(action, mode) {
+    return function (editor) {
+      const cm = editor && editor.codemirror;
+      if (cm) trimSelectionEdges(cm, mode || "inline");
+      return action(editor);
+    };
+  }
+
   function buildToolbar() {
     if (typeof EasyMDE === "undefined") return false;
     return [
       {
         name: "bold",
-        action: EasyMDE.toggleBold,
+        action: withTrimmedSelection(EasyMDE.toggleBold, "inline"),
         text: "B",
         title: "粗體 (Ctrl-B)",
         className: "kb-md-btn kb-md-bold"
       },
       {
         name: "italic",
-        action: EasyMDE.toggleItalic,
+        action: withTrimmedSelection(EasyMDE.toggleItalic, "inline"),
         text: "I",
         title: "斜體 (Ctrl-I)",
         className: "kb-md-btn kb-md-italic"
@@ -26,21 +104,21 @@
       "|",
       {
         name: "heading-1",
-        action: EasyMDE.toggleHeading1,
+        action: withTrimmedSelection(EasyMDE.toggleHeading1, "line"),
         text: "H1",
         title: "標題 1",
         className: "kb-md-btn"
       },
       {
         name: "heading-2",
-        action: EasyMDE.toggleHeading2,
+        action: withTrimmedSelection(EasyMDE.toggleHeading2, "line"),
         text: "H2",
         title: "標題 2",
         className: "kb-md-btn"
       },
       {
         name: "heading-3",
-        action: EasyMDE.toggleHeading3,
+        action: withTrimmedSelection(EasyMDE.toggleHeading3, "line"),
         text: "H3",
         title: "標題 3",
         className: "kb-md-btn"
@@ -48,21 +126,21 @@
       "|",
       {
         name: "unordered-list",
-        action: EasyMDE.toggleUnorderedList,
+        action: withTrimmedSelection(EasyMDE.toggleUnorderedList, "line"),
         text: "• List",
         title: "項目符號列表",
         className: "kb-md-btn"
       },
       {
         name: "ordered-list",
-        action: EasyMDE.toggleOrderedList,
+        action: withTrimmedSelection(EasyMDE.toggleOrderedList, "line"),
         text: "1. List",
         title: "編號列表",
         className: "kb-md-btn"
       },
       {
         name: "quote",
-        action: EasyMDE.toggleBlockquote,
+        action: withTrimmedSelection(EasyMDE.toggleBlockquote, "line"),
         text: "❝",
         title: "引用",
         className: "kb-md-btn"
@@ -70,14 +148,14 @@
       "|",
       {
         name: "code",
-        action: EasyMDE.toggleCodeBlock,
+        action: withTrimmedSelection(EasyMDE.toggleCodeBlock, "inline"),
         text: "</>",
         title: "程式碼",
         className: "kb-md-btn"
       },
       {
         name: "link",
-        action: EasyMDE.drawLink,
+        action: withTrimmedSelection(EasyMDE.drawLink, "inline"),
         text: "🔗 Link",
         title: "連結 (Ctrl-K)",
         className: "kb-md-btn"
@@ -174,6 +252,7 @@
           // Native EasyMDE preview / side-by-side / fullscreen omitted from toolbar
           sideBySideFullscreen: false
         });
+        this._rebindFormatShortcuts(this._mde);
         this._mde.codemirror.on("change", function () {
           self.updatePreview();
           if (typeof self._onChange === "function") self._onChange();
@@ -183,6 +262,41 @@
         this._mde = null;
       }
       return this._mde;
+    },
+
+
+    /**
+     * EasyMDE binds Cmd/Ctrl-B/I/K etc. to its stock actions via `bindings`,
+     * which our toolbar wrappers do not replace. Re-point those keys at the
+     * same trimmed wrappers so keyboard shortcuts match the toolbar.
+     */
+    _rebindFormatShortcuts(mde) {
+      if (!mde || !mde.codemirror) return;
+      const cm = mde.codemirror;
+      const isMac = /Mac/.test(navigator.platform || "");
+      const mod = isMac ? "Cmd" : "Ctrl";
+      const extra = Object.assign({}, cm.getOption("extraKeys") || {});
+
+      function bind(key, action, mode) {
+        if (!action) return;
+        const wrapped = withTrimmedSelection(action, mode);
+        extra[key] = function () {
+          wrapped(mde);
+        };
+      }
+
+      bind(mod + "-B", EasyMDE.toggleBold, "inline");
+      bind(mod + "-I", EasyMDE.toggleItalic, "inline");
+      bind(mod + "-K", EasyMDE.drawLink, "inline");
+      bind(mod + "-L", EasyMDE.toggleUnorderedList, "line");
+      bind(mod + "-Alt-L", EasyMDE.toggleOrderedList, "line");
+      bind(mod + "-'", EasyMDE.toggleBlockquote, "line");
+      bind(mod + "-Alt-C", EasyMDE.toggleCodeBlock, "inline");
+      bind("Ctrl-Alt-1", EasyMDE.toggleHeading1, "line");
+      bind("Ctrl-Alt-2", EasyMDE.toggleHeading2, "line");
+      bind("Ctrl-Alt-3", EasyMDE.toggleHeading3, "line");
+
+      cm.setOption("extraKeys", extra);
     },
 
     _fitEditor() {
