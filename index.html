@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KB Workbench</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="vendor/easymde/easymde.min.css" />
 </head>
 <body>
   <div id="app">
@@ -77,20 +78,6 @@
           <div id="article-view" class="article-view mode-preview">
             <div class="col col-md">
               <div class="col-h">Markdown</div>
-              <div class="md-toolbar" id="md-toolbar" role="toolbar" aria-label="Markdown formatting">
-                <button type="button" class="md-btn" data-md="bold" title="粗體 (Bold)" aria-label="Bold"><b>B</b></button>
-                <button type="button" class="md-btn" data-md="italic" title="斜體 (Italic)" aria-label="Italic"><i>I</i></button>
-                <button type="button" class="md-btn" data-md="heading" title="標題 H1–H3（循環）" aria-label="Heading">H</button>
-                <span class="md-sep" aria-hidden="true"></span>
-                <button type="button" class="md-btn" data-md="ul" title="項目符號列表" aria-label="Bullet list">•≡</button>
-                <button type="button" class="md-btn" data-md="ol" title="編號列表" aria-label="Numbered list">1.</button>
-                <button type="button" class="md-btn" data-md="quote" title="引用" aria-label="Quote">❝</button>
-                <span class="md-sep" aria-hidden="true"></span>
-                <button type="button" class="md-btn" data-md="code" title="行內程式碼" aria-label="Inline code">&lt;/&gt;</button>
-                <button type="button" class="md-btn" data-md="codeblock" title="程式碼區塊" aria-label="Code block">{ }</button>
-                <button type="button" class="md-btn" data-md="link" title="連結" aria-label="Link">🔗</button>
-                <button type="button" class="md-btn" data-md="hr" title="水平線" aria-label="Horizontal rule">―</button>
-              </div>
               <textarea id="field-body" spellcheck="false"></textarea>
             </div>
             <div class="col col-preview">
@@ -108,6 +95,7 @@
   <script src="config.js"></script>
   <script src="vendor/marked/marked.min.js"></script>
   <script src="vendor/dompurify/purify.min.js"></script>
+  <script src="vendor/easymde/easymde.min.js"></script>
   <script src="js/slug.js"></script>
   <script src="js/schema.js"></script>
   <script src="js/store.js"></script>

@@ -470,56 +470,128 @@ main.workspace {
   background: var(--panel);
   flex-shrink: 0;
 }
-/* Markdown formatting toolbar (edit mode, left pane) */
-.md-toolbar {
+/* EasyMDE on left Markdown pane (right pane keeps our Preview) */
+.col-md {
+  position: relative;
+}
+.col-md .EasyMDEContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  background: var(--bg);
+}
+.col-md .editor-toolbar {
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  border: none;
   border-bottom: 1px solid var(--border);
+  border-radius: 0;
   background: var(--panel2);
-  flex-shrink: 0;
+  opacity: 1;
 }
-.article-view.mode-preview .md-toolbar {
-  display: none;
-}
-.md-btn {
+.col-md .editor-toolbar button,
+.col-md .editor-toolbar .kb-md-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 7px;
+  min-width: 38px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0 10px;
+  margin: 0;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   font-family: var(--sans);
-  cursor: pointer;
   line-height: 1;
+  cursor: pointer;
 }
-.md-btn i { font-style: italic; font-weight: 600; }
-.md-btn:hover {
+.col-md .editor-toolbar button.kb-md-bold {
+  font-weight: 800;
+}
+.col-md .editor-toolbar button.kb-md-italic {
+  font-style: italic;
+  font-weight: 600;
+}
+.col-md .editor-toolbar button:hover,
+.col-md .editor-toolbar button.active {
   background: var(--panel);
   border-color: var(--border);
   color: var(--accent);
 }
-.md-btn:active {
-  background: var(--bg);
-}
-.md-btn:focus-visible {
+.col-md .editor-toolbar button:focus-visible {
   outline: 2px solid var(--accent-dim);
   outline-offset: 1px;
 }
-.md-sep {
+.col-md .editor-toolbar i.separator {
   width: 1px;
-  height: 18px;
-  background: var(--border);
-  margin: 0 4px;
-  flex-shrink: 0;
+  height: 22px;
+  margin: 0 6px;
+  border-left: 1px solid var(--border);
+  border-right: none;
+  color: transparent;
+  text-indent: -9999px;
+}
+.col-md .EasyMDEContainer .CodeMirror {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 120px;
+  border: none;
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+.col-md .EasyMDEContainer .CodeMirror-scroll {
+  min-height: 100%;
+}
+.col-md .EasyMDEContainer .CodeMirror-cursor {
+  border-left: 1px solid var(--accent);
+}
+.col-md .EasyMDEContainer .CodeMirror-selected,
+.col-md .EasyMDEContainer .CodeMirror-focused .CodeMirror-selected {
+  background: rgba(88, 166, 255, 0.22);
+}
+.col-md .cm-s-easymde .cm-header,
+.col-md .cm-s-easymde .cm-header-1,
+.col-md .cm-s-easymde .cm-header-2,
+.col-md .cm-s-easymde .cm-header-3 {
+  color: #c5d4e8;
+}
+.col-md .cm-s-easymde .cm-comment,
+.col-md .cm-s-easymde .cm-quote {
+  color: var(--muted);
+  background: transparent;
+}
+.col-md .cm-s-easymde .cm-link,
+.col-md .cm-s-easymde .cm-url {
+  color: var(--accent);
+}
+.col-md .cm-s-easymde .cm-string {
+  color: #7ee787;
+}
+.col-md .editor-statusbar {
+  display: none;
+}
+/* Hide EasyMDE native preview surfaces — right pane is our Preview */
+.col-md .editor-preview,
+.col-md .editor-preview-side,
+.col-md .editor-preview-full {
+  display: none !important;
 }
 
 textarea#field-body {
